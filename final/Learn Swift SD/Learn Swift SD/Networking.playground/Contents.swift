@@ -98,79 +98,143 @@ let url = "https://api.github.com/orgs/LearnSwiftSD/repos"
 
 //: #### Improvements
 
-//: 1. Create a `typealias`
+//: 1. Use `typealias`
+
 typealias JSONDictionary = [String: Any]
+
 //: 2. Create a Result Type to gracefully handle the response
+
+enum NetworkResult {
+  case success(Data)
+  case failure(Error)
+}
 
 //: 3. Create an Error Type for the different types of errors we might encounter
 
+enum NetworkError: Error {
+  case networkRequestError
+  case couldNotParseJSON
+  case noData
+  case invalidResponse
+  case unauthorized
+  case serverError
+  case unknownError
+}
+
 // 4. Lets create an enum to describe the different HTTP methods
 
+enum HTTPMethod {
+  case get
+  case put
+  case post
+}
+
 //: So an improvement to the method above could be
+func improvedGetData(fromURLString urlString: String, completion: @escaping (NetworkResult) -> ()) {
+
+  let url = URL(string: urlString)!
+
+  let dataTask = URLSession.shared.dataTask(with: url) { data, response, error in
+
+    if let error = error {
+      completion(NetworkResult.failure(error))
+    }
+
+    guard let data = data else {
+      completion(NetworkResult.failure(NetworkError.noData)); return
+    }
+
+    guard let response = response as? HTTPURLResponse else {
+      completion(NetworkResult.failure(NetworkError.invalidResponse)); return
+    }
+
+    if case 200 ... 299 = response.statusCode {
+
+      completion(NetworkResult.success(data))
+
+    } else {
+      completion(NetworkResult.failure(NetworkError.unknownError))
+    }
+
+  }
+
+  dataTask.resume()
+}
 
 //: We will talk more about error handling in another lesson, but this can serve as an example for setting up an Error enum. Lets make sure it worked
+//improvedGetData(fromURLString: url) { result in
+//  switch result {
+//  case .success(let data):
+//    guard let json = try? JSONSerialization.jsonObject(with: data, options: []) else {
+//      return
+//    }
+//    dump(json)
+//  case .failure(let error):
+//    dump(error)
+//  }
+//}
 
 //: ### Ok, so now lets make it much better by using protocols and generics
 
 //: We create a type to encapsulate the endpoint information
-//protocol APIType {
-//  var baseUrl: String { get }
-//  var path: String { get }
-//  var method: HTTPMethod { get }
-//  var parameters: JSONDictionary? { get }
-//  var sampleData: Data { get }
-//}
+protocol APIType {
+  var baseUrl: String { get }
+  var path: String { get }
+  var method: HTTPMethod { get }
+  var parameters: JSONDictionary? { get }
+  var sampleData: Data { get }
+}
 
 //: and start our API description
-//enum GithubAPI {
-//  case getRepositories
-//  case createRepository(name: String)
-//  ///... add endpoints here
-//
-//}
+enum GithubAPI {
+  case getRepositories
+  case createRepository(name: String)
+  ///... add endpoints here
+
+}
 
 //: Add conformance to `APIType`
-//extension GithubAPI: APIType {
-//  var baseUrl: String { return "https://api.github.com" }
-//
-//  var path: String {
-//    switch self {
-//    case .getRepositories:
-//      return "/orgs/LearnSwiftSD/repos"
-//    case .createRepository:
-//      return "/orgs/LearnSwiftSD/repos"
-//    }
-//  }
-//
-//  var method: HTTPMethod {
-//    switch self {
-//    case .getRepositories:
-//      return .get
-//    case .createRepository:
-//      return .post
-//    }
-//  }
-//
-//  var parameters: JSONDictionary? {
-//    switch self {
-//    case .getRepositories:
-//      return nil
-//    case .createRepository(let name):
-//      return [
-//        "name" : name
-//      ]
-//    }
-//  }
-//
-//  var sampleData: Data {
-//    switch self {
-//    case .getRepositories:
-//      return Data()
-//    case .createRepository:
-//      return Data()
-//    }
-//  }
-//}
+extension GithubAPI: APIType {
+  var baseUrl: String { return "https://api.github.com" }
+
+  var path: String {
+    switch self {
+    case .getRepositories:
+      return "/orgs/LearnSwiftSD/repos"
+    case .createRepository:
+      return "/orgs/LearnSwiftSD/repos"
+    }
+  }
+
+  var method: HTTPMethod {
+    switch self {
+    case .getRepositories:
+      return .get
+    case .createRepository:
+      return .post
+    }
+  }
+
+  var parameters: JSONDictionary? {
+    switch self {
+    case .getRepositories:
+      return nil
+    case .createRepository(let name):
+      return [
+        "name" : name
+      ]
+    }
+  }
+
+  var sampleData: Data {
+    switch self {
+    case .getRepositories:
+      return Data()
+    case .createRepository:
+      return Data()
+    }
+  }
+}
 
 //: We also need to be able to initialize our `Repository` object from JSON
 protocol JSONInitializable {
@@ -202,11 +266,52 @@ extension Repository: JSONInitializable {
   }
 }
 //: Now we can create a generic `request` method and encapsulate the functionality in a protocol
+protocol NetworkClientType {
+  func request<A>(endpoint: APIType, completion: @escaping (Result<A>) -> ())
+}
 
 //: We will need a more generic `Result` type
-
+enum Result<A> {
+  case success(A)
+  case failure(Error)
+}
 //: and lets move our networking code inside of that.
+final class NetworkClient: NetworkClientType {
+  func request<A>(endpoint: APIType, completion: @escaping (Result<A>) -> ()) {
 
+    let urlString = endpoint.baseUrl + endpoint.path
+    let url = URL(string: urlString)!
+
+    let dataTask = URLSession.shared.dataTask(with: url) { data, response, error in
+
+      if let error = error {
+        completion(Result.failure(error))
+      }
+
+      guard let data = data else {
+        completion(Result.failure(NetworkError.noData)); return
+      }
+
+      guard let response = response as? HTTPURLResponse else {
+        completion(Result.failure(NetworkError.invalidResponse)); return
+      }
+
+      if case 200 ... 299 = response.statusCode {
+
+        // Now we need to parse the data
+        let obj = try! JSONSerialization.jsonObject(with: data, options: []) as! A
+        completion(Result.success(obj))
+
+      } else {
+        completion(Result.failure(NetworkError.unknownError))
+      }
+
+    }
+
+    dataTask.resume()
+
+  }
+}
 //: Lets see if we can view it in the list
 class RepositoryListViewController: UITableViewController {
 
@@ -220,7 +325,18 @@ class RepositoryListViewController: UITableViewController {
     super.viewDidLoad()
     tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
 
-    //TODO: Load data
+    //    let client = NetworkClient()
+    //
+    //    client.request(endpoint: GithubAPI.getRepositories) { (result: Result<[JSONDictionary]>) -> Void in
+    //      if case .success(let jsonArray) = result {
+    //        //    dump(jsonArray)
+    //
+    //        self.repositories = jsonArray.flatMap(Repository.init)
+    //
+    //        print("We have \(self.repositories.count) respositories")
+    //      }
+    //    }
+
   }
 
   override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -242,4 +358,4 @@ class RepositoryListViewController: UITableViewController {
 let repositoryListVC = RepositoryListViewController(style: .plain)
 
 PlaygroundPage.current.liveView = repositoryListVC.view
-PlaygroundPage.current.needsIndefiniteExecution = true
+//PlaygroundPage.current.needsIndefiniteExecution = true

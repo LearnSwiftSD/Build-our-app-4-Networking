@@ -33,6 +33,7 @@
 		B3014DF51EE59ADC0069F74D /* FakeData.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FakeData.swift; sourceTree = "<group>"; };
 		B3014DFA1EE64AFF0069F74D /* RepositoryTableViewCell.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RepositoryTableViewCell.swift; sourceTree = "<group>"; };
 		B309084A1EF0C0B8000B3A23 /* RepositoryDetailViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RepositoryDetailViewController.swift; sourceTree = "<group>"; };
+		B31B6C671F146E280087E3DA /* Networking.playground */ = {isa = PBXFileReference; lastKnownFileType = file.playground; name = Networking.playground; path = "Learn Swift SD/Networking.playground"; sourceTree = "<group>"; };
 		B337D6CD1F033B1100FADCED /* PretendViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PretendViewController.swift; sourceTree = "<group>"; };
 		B349CAB61EF01311003695CC /* RepositoryDetailPlayground.playground */ = {isa = PBXFileReference; lastKnownFileType = file.playground; name = RepositoryDetailPlayground.playground; path = "Learn Swift SD/RepositoryDetailPlayground.playground"; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.swift; };
 		B349CAB71EF0146C003695CC /* Commit.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Commit.swift; sourceTree = "<group>"; };
@@ -55,6 +56,7 @@
 		B3014DD21EE5975B0069F74D = {
 			isa = PBXGroup;
 			children = (
+				B31B6C671F146E280087E3DA /* Networking.playground */,
 				B349CAB61EF01311003695CC /* RepositoryDetailPlayground.playground */,
 				B3014DDD1EE5975B0069F74D /* Learn Swift SD */,
 				B3014DDC1EE5975B0069F74D /* Products */,

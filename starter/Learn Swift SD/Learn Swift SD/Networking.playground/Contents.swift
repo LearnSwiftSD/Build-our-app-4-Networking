@@ -55,7 +55,8 @@ func getDataFromNetwork(fromUrlString urlString: String, completion: @escaping (
 
   let url = URL(string: urlString)!
 
-  let dataTask = URLSession.shared.dataTask(with: url) { data, response, error in
+	let dataTask = URLSession.shared.dataTask(with: url) { data, response, error in
+
     if let error = error {
       print("Oh no, something really bad happened!!!")
       dump(error)
@@ -79,7 +80,6 @@ func getDataFromNetwork(fromUrlString urlString: String, completion: @escaping (
         dump(data)
       }
     }
-
   }
 
   dataTask.resume()
@@ -101,15 +101,107 @@ let url = "https://api.github.com/orgs/LearnSwiftSD/repos"
 //: 1. Create a `typealias`
 typealias JSONDictionary = [String: Any]
 //: 2. Create a Result Type to gracefully handle the response
-
+enum NetworkResult {
+	case success(Data)
+	case failure(NetworkError)
+}
 //: 3. Create an Error Type for the different types of errors we might encounter
-
+enum NetworkError: Error {
+	case unknown
+	case cocoa(Error?)
+	case couldNotParseJson(Data)
+	case unauthorized
+	case offline
+	case timeout
+	case redirect
+}
 // 4. Lets create an enum to describe the different HTTP methods
-
+enum  HTTPMethod {
+	case get
+	case post
+	case put
+	case patch
+}
 //: So an improvement to the method above could be
+private func handleURLSessionResponse(data: Data?, response: URLResponse?, error: Error?) -> () {
 
+	let result: NetworkResult
+
+	if let error = error as? NSError {
+
+		result = .failure(NetworkError.cocoa(error))
+
+	} else if
+		let data = data,
+		let response = response as? HTTPURLResponse {
+
+		switch response.statusCode {
+		case 200 ... 299:
+			result = .success(data)
+		case 300 ... 399:
+			result = .failure(NetworkError.redirect)
+		case 400 ... 499:
+			result = .failure(NetworkError.unauthorized)
+		default:
+			result = .failure(NetworkError.unknown)
+		}
+	} else {
+		result = .failure(NetworkError.unknown)
+	}
+	//completion(result)
+
+}
+
+func improvedGetDataFromNetwork(fromUrlString urlString: String, completion: @escaping (NetworkResult) -> ()) {
+
+	let url = URL(string: urlString)!
+
+	let dataTask = URLSession.shared.dataTask(with: url) { data, response, error in
+
+		let result: NetworkResult
+
+		if let error = error as? NSError {
+
+			result = .failure(NetworkError.cocoa(error))
+
+		} else if
+			let data = data,
+			let response = response as? HTTPURLResponse {
+
+			switch response.statusCode {
+			case 200 ... 299:
+				result = .success(data)
+			case 300 ... 399:
+				result = .failure(NetworkError.redirect)
+			case 400 ... 499:
+				result = .failure(NetworkError.unauthorized)
+			default:
+				result = .failure(NetworkError.unknown)
+			}
+		} else {
+			result = .failure(NetworkError.unknown)
+		}
+		
+		completion(result)
+	}
+	dataTask.resume()
+}
 //: We will talk more about error handling in another lesson, but this can serve as an example for setting up an Error enum. Lets make sure it worked
-
+//improvedGetDataFromNetwork(fromUrlString: url) { result in
+//
+//	switch result {
+//	case .success(let data):
+//		//do stuff with data
+//		if let json = try? JSONSerialization.jsonObject(with: data, options: []) {
+//			print("Everything went well")
+//		}
+//	case .failure(let error):
+//		dump(error)
+//
+//		//TODO: Add error handling once we learn how...
+//	}
+//
+//}
 //: ### Ok, so now lets make it much better by using protocols and generics
 
 //: We create a type to encapsulate the endpoint information
